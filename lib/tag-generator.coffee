@@ -1,6 +1,7 @@
 {BufferedProcess, Point} = require 'atom'
 Q = require 'q'
 path = require 'path'
+Ctags = require 'universal-ctags'
 
 module.exports =
   class TagGenerator
@@ -60,7 +61,6 @@ module.exports =
     generate: ->
       deferred = Q.defer()
       tags = []
-      command = path.resolve(__dirname, '..', 'vendor', "universal-ctags-#{process.platform}")
       defaultCtagsFile = require.resolve('./.ctags')
       args = ["--options=#{defaultCtagsFile}", '--fields=KsS']
 
@@ -70,14 +70,12 @@ module.exports =
 
       args.push('-nf', '-', @path)
 
-      stdout = (lines) =>
-        for line in lines.split('\n')
+      result = Ctags.ctags(args)
+      stdout = result['outputStream']
+      if stdout
+        for line in stdout.split('\n')
           if tag = @parseTagLine(line.trim())
             tags.push(tag)
-      stderr = (lines) ->
-      exit = ->
-        deferred.resolve(tags)
-
-      new BufferedProcess({command, args, stdout, stderr, exit})
+      deferred.resolve(tags)
 
       deferred.promise
